@@ -223,7 +223,7 @@ namespace SkiaSharp.Extended.Svg
 			}
 		}
 
-		private void ReadElement(XElement e, SKCanvas canvas, SKPaint stroke, SKPaint fill, bool isMask = false, CancellationToken token = default)
+		private void ReadElement(XElement e, SKCanvas canvas, SKPaint stroke, SKPaint fill, bool isMask = false, CancellationToken token = default, Dictionary<string, string> parentStyle = null)
 		{
 			token.ThrowIfCancellationRequested();
 
@@ -235,7 +235,8 @@ namespace SkiaSharp.Extended.Svg
 			var isGroup = elementName == "g";
 
 			// read style
-			var style = ReadPaints(e, ref stroke, ref fill, isGroup, isMask);
+			var style = ReadPaints(e, ref stroke, ref fill, isGroup, isMask, parentStyle);
+			
 
 			if (style.TryGetValue("display", out var displayStyle) && displayStyle == "none")
 				return;
@@ -394,7 +395,7 @@ namespace SkiaSharp.Extended.Svg
 
 								foreach (var gElement in e.Elements())
 								{
-									ReadElement(gElement, canvas, stroke?.Clone(), fill?.Clone(), isMask);
+									ReadElement(gElement, canvas, stroke?.Clone(), fill?.Clone(), isMask, default, style);
 								}
 							}
 							finally
@@ -1142,9 +1143,19 @@ namespace SkiaSharp.Extended.Svg
 			return new SKSize(width, height);
 		}
 
-		private Dictionary<string, string> ReadPaints(XElement e, ref SKPaint stroke, ref SKPaint fill, bool isGroup, bool isMask = false)
+		private Dictionary<string, string> ReadPaints(XElement e, ref SKPaint stroke, ref SKPaint fill, bool isGroup, bool isMask = false, Dictionary<string, string> parentStyle = null)
 		{
 			var style = ReadStyle(e);
+
+			if (parentStyle != null)
+			{
+				foreach (var keyValuePair in parentStyle)
+				{
+					if (style.ContainsKey(keyValuePair.Key))
+						continue;
+					style[keyValuePair.Key] = keyValuePair.Value;
+				}
+			}
 
 			ReadPaints(style, ref stroke, ref fill, isGroup, out var fillId, out var strokeFillId);
 
